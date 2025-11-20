@@ -1,0 +1,8 @@
+# HBuilderX 编辑器配置文件
+.hbuilderx/
+
+# 编译结果和打包文件，这个是导致您出错的元凶
+unpackage/
+
+# 依赖包，体积巨大且可以重新安装
+node_modules/
