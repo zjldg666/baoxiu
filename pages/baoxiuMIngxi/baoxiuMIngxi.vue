@@ -2,88 +2,142 @@
 <template>
   <view class="container">
     <navbar :username="username" @logout="logout" />
-	<!-- 添加选择卡 -->
-	    <view class="tabs">
-	      <view 
-	        :class="['tab', { active: currentTab === 'baoxiu' }]" 
-	        @click="switchTab('baoxiu')"
-	      >
-	        报修明细
-	      </view>
-	      <view 
-	        :class="['tab', { active: currentTab === 'weixiu' }]" 
-	        @click="switchTab('weixiu')"
-	      >
-	        维修明细
-	      </view>
-	    </view>
-		
-    <view  v-if="currentTab === 'baoxiu'" class="content">
-	
-  
-      <view class="detail-item">
-        <strong>报修单号:</strong>
-        <view class="xinxi">{{ detail.docnum }}</view>
-      </view>
-      <view class="detail-item">
-        <strong>资产编号:</strong>
-        <view class="xinxi">{{ detail.AssetsCode }}</view>
-      </view>
-      <view class="detail-item">
-        <strong>资产名称:</strong>
-        <view class="xinxi">{{ detail.AssetsName }}</view>
-      </view>
-      <view class="detail-item">
-        <strong>使用部门:</strong>
-        <view class="xinxi">{{ detail.UserDep }}</view>
-      </view>
-      <view class="detail-item">
-        <strong>资产类型:</strong>
-        <view class="xinxi">{{ detail.AssetsType }}</view>
-      </view>
-      <view class="detail-item">
-        <strong>完工日期:</strong>
-        <view class="xinxi">{{ detail.FinishDate }}</view>
-      </view>
-      <view class="detail-item">
-        <strong>故障描述:</strong>
-        <view class="xinxi">{{ detail.Discription }}</view>
-      </view>
-      <view class="detail-item">
-        <strong>相关相片:</strong>
-      </view>
-      <view v-if="detail.FilesList && detail.FilesList.length > 0" class="image-preview">
-        <view v-for="(file, fileIndex) in detail.FilesList" :key="fileIndex">
-          <image :src="file" mode="aspectFit" class="image" @click="openImageViewer(file)" />
+    
+    <!-- 顶部固定 Tabs -->
+    <view class="tabs-wrapper">
+      <view class="tabs">
+        <view 
+          :class="['tab', { active: currentTab === 'baoxiu' }]" 
+          @click="switchTab('baoxiu')"
+        >
+          <text>报修明细</text>
+          <view class="active-line" v-if="currentTab === 'baoxiu'"></view>
+        </view>
+        <view 
+          :class="['tab', { active: currentTab === 'weixiu' }]" 
+          @click="switchTab('weixiu')"
+        >
+          <text>维修明细</text>
+          <view class="active-line" v-if="currentTab === 'weixiu'"></view>
         </view>
       </view>
-      <view v-else class="no-images">暂无相关图片</view>
     </view>
-	
-	<view v-if="currentTab === 'weixiu'" class="content">
-		
-			  
-		<view class="detail-item"><strong>维修单号:</strong>
-			<view class="xinxi">{{ detail.wxdocnum }}</view>
-		</view>
-		<view class="detail-item"><strong>原因分析:</strong> 
-			<view class="xinxi">{{ detail.Reason }}</view>
-		</view>
-		<view class="detail-item"><strong>维修方案:</strong> 
-			<view class="xinxi">{{ detail.SchemeTxt }}</view>
-		</view>
-		<view class="detail-item"><strong>预计金额:</strong> 
-			<view class="xinxi">{{ detail.Amount }}</view>
-		</view>
-		<view class="detail-item"><strong>币别:</strong> 
-			<view class="xinxi">{{ detail.Currency }}</view>
-		</view>
-	</view>
-  <image-viewer
-    :visible="isImageViewerVisible"
-    :current-image="selectedImageUrl"
-    :on-close="closeImageViewer"
-  ></image-viewer>
+
+    <!-- 内容区域 - 使用 scroll-view 优化滚动体验 -->
+    <scroll-view scroll-y class="scroll-content">
+      
+      <!-- 报修明细 -->
+      <view v-if="currentTab === 'baoxiu'" class="content-wrapper fade-in">
+        <!-- 基础信息卡片 -->
+        <view class="card">
+          <view class="card-header">基础信息</view>
+          
+          <view class="detail-row">
+            <text class="label">报修单号</text>
+            <text class="value selectable">{{ detail.docnum || '-' }}</text>
+          </view>
+          <view class="detail-row">
+            <text class="label">资产编号</text>
+            <text class="value selectable">{{ detail.AssetsCode || '-' }}</text>
+          </view>
+          <view class="detail-row">
+            <text class="label">资产名称</text>
+            <text class="value highlight">{{ detail.AssetsName || '-' }}</text>
+          </view>
+          <view class="detail-row">
+            <text class="label">使用部门</text>
+            <text class="value">{{ detail.UserDep || '-' }}</text>
+          </view>
+          <view class="detail-row">
+            <text class="label">资产类型</text>
+            <text class="value">{{ detail.AssetsType || '-' }}</text>
+          </view>
+		  <view class="detail-row no-border">
+		    <text class="label">故障日期</text>
+		    <text class="value">{{ detail.FaultDate || '-' }}</text>
+		  </view>
+          <view class="detail-row no-border">
+            <text class="label">希望完工日期</text>
+            <text class="value">{{ detail.FinishDate || '-' }}</text>
+          </view>
+        </view>
+
+        <!-- 故障描述与图片卡片 -->
+        <view class="card">
+          <view class="card-header">故障详情</view>
+          
+          <view class="detail-block">
+            <text class="label-block">故障描述</text>
+            <view class="value-box">
+              <text>{{ detail.Discription || '暂无描述' }}</text>
+            </view>
+          </view>
+
+          <view class="detail-block">
+            <text class="label-block">相关照片</text>
+            <view v-if="detail.FilesList && detail.FilesList.length > 0" class="image-grid">
+              <view v-for="(file, fileIndex) in detail.FilesList" :key="fileIndex" class="image-item">
+                <image 
+                  :src="file" 
+                  mode="aspectFill" 
+                  class="img" 
+                  @click="openImageViewer(file)" 
+                />
+              </view>
+            </view>
+            <view v-else class="no-data">暂无相关图片</view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 维修明细 -->
+      <view v-if="currentTab === 'weixiu'" class="content-wrapper fade-in">
+        <view class="card">
+          <view class="card-header">维修单信息</view>
+          
+          <view class="detail-row">
+            <text class="label">维修单号</text>
+            <text class="value selectable">{{ detail.wxdocnum || '-' }}</text>
+          </view>
+          <view class="detail-row">
+            <text class="label">预计金额</text>
+            <text class="value price">{{ detail.Amount || '0' }}</text>
+          </view>
+          <view class="detail-row no-border">
+            <text class="label">币别</text>
+            <text class="value">{{ detail.Currency || 'RMB' }}</text>
+          </view>
+        </view>
+
+        <view class="card">
+          <view class="card-header">维修方案</view>
+          
+          <view class="detail-block">
+            <text class="label-block">原因分析</text>
+            <view class="value-box">
+              <text>{{ detail.Reason || '暂无分析' }}</text>
+            </view>
+          </view>
+          
+          <view class="detail-block">
+            <text class="label-block">维修方案</text>
+            <view class="value-box">
+              <text>{{ detail.SchemeTxt || '暂无方案' }}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+      
+      <!-- 底部留白 -->
+      <view style="height: 40rpx;"></view>
+    </scroll-view>
+
+    <!-- 图片预览组件 -->
+    <image-viewer
+      :visible="isImageViewerVisible"
+      :current-image="selectedImageUrl"
+      :on-close="closeImageViewer"
+    ></image-viewer>
   </view>
 </template>
 
@@ -239,78 +293,188 @@ export default {
   }
 };
 </script>
+
 <style scoped>
+/* --- 全局布局 --- */
 .container {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background-color: white;
+  background-color: #f5f7fa; /* 浅灰底色 */
 }
 
-.content {
-  width: 90%;
-  max-width: 800rpx;
+/* --- Tabs 样式 --- */
+.tabs-wrapper {
+  background-color: #fff;
+  z-index: 10;
+  box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.03);
+}
+
+.tabs {
+  display: flex;
+  justify-content: space-around;
+  height: 88rpx;
+}
+
+.tab {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 40rpx;
+  justify-content: center;
+  font-size: 30rpx;
+  color: #606266;
+  position: relative;
+  transition: all 0.3s;
 }
-.tabs {
-  display: flex;
-  justify-content: space-around;
-  background-color: #f8f8f8;
-  padding: 20rpx 0;
-}
-.tab {
-  flex: 1;
-  text-align: center;
-  padding: 10rpx;
-  cursor: pointer;
-}
+
 .tab.active {
   color: #007aff;
-  border-bottom: 4rpx solid #007aff;
+  font-weight: bold;
+  font-size: 32rpx;
 }
 
+.active-line {
+  position: absolute;
+  bottom: 8rpx;
+  width: 40rpx;
+  height: 6rpx;
+  background-color: #007aff;
+  border-radius: 3rpx;
+}
 
-.detail-item {
-  margin-bottom: 20px;
-  width: 93%;
+/* --- 滚动区域 --- */
+.scroll-content {
+  flex: 1;
+  height: 0;
+  width: 100%;
+}
+
+.content-wrapper {
+  padding: 24rpx;
+}
+
+/* --- 卡片通用样式 --- */
+.card {
+  background-color: #fff;
+  border-radius: 16rpx;
+  padding: 0 30rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.02);
+}
+
+.card-header {
+  font-size: 30rpx;
+  font-weight: bold;
+  color: #333;
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid #f0f0f0;
+  margin-bottom: 10rpx;
+}
+
+/* --- 左右结构的详情行 --- */
+.detail-row {
   display: flex;
   justify-content: space-between;
-  height: auto; /* 改为 auto 以便适应内容高度 */
+  align-items: center;
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid #f9f9f9;
 }
 
-.image-preview {
+.no-border {
+  border-bottom: none;
+}
+
+.label {
+  font-size: 28rpx;
+  color: #909399; /* 浅灰标签 */
+  width: 180rpx;
+}
+
+.value {
+  flex: 1;
+  text-align: right;
+  font-size: 28rpx;
+  color: #333;
+  line-height: 1.4;
+  word-break: break-all;
+}
+
+.selectable {
+  user-select: text;
+}
+
+.highlight {
+  color: #007aff;
+  font-weight: 500;
+}
+
+.price {
+  color: #ff4d4f;
+  font-weight: bold;
+  font-family: Arial, sans-serif;
+}
+
+/* --- 上下结构的块级详情 (用于长文本) --- */
+.detail-block {
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid #f9f9f9;
+}
+
+.detail-block:last-child {
+  border-bottom: none;
+}
+
+.label-block {
+  display: block;
+  font-size: 28rpx;
+  color: #909399;
+  margin-bottom: 16rpx;
+}
+
+.value-box {
+  background-color: #f9fafe; /* 淡背景色块 */
+  padding: 20rpx;
+  border-radius: 8rpx;
+  font-size: 28rpx;
+  color: #333;
+  line-height: 1.6;
+  text-align: justify;
+}
+
+/* --- 图片区域 --- */
+.image-grid {
   display: flex;
-  flex-wrap: wrap; /* 允许换行 */
-  margin: 20rpx;
+  flex-wrap: wrap;
+  gap: 20rpx;
 }
 
-strong {
-  line-height: 86rpx;
+.image-item {
+  width: 150rpx;
+  height: 150rpx;
+  border-radius: 8rpx;
+  overflow: hidden;
+  background-color: #f0f0f0;
 }
 
-.xinxi {
-  width: 60%;
-  padding: 20rpx;
-  border: 2rpx solid #ccc;
-  border-radius: 10rpx;
-  color: red;
-  word-wrap: break-word; /* 确保文本可以换行 */
+.img {
+  width: 100%;
+  height: 100%;
 }
 
-.image {
-  width: 160rpx;
-  height: 160rpx;
-  margin-right: 20rpx;
-  cursor: pointer;
+.no-data {
+  font-size: 26rpx;
+  color: #c0c4cc;
+  padding: 10rpx 0;
 }
 
-.no-images {
-  text-align: center;
-  padding: 20rpx;
-  color: #666;
+/* --- 简单动画 --- */
+.fade-in {
+  animation: fadeIn 0.3s ease-out;
 }
-</style> 
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10rpx); }
+  to { opacity: 1; transform: translateY(0); }
+}
+</style>

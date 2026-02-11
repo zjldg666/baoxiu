@@ -16,11 +16,14 @@
 
 			<!-- 3. 表格内容 (scroll-view 只包含数据行，占据剩余空间) -->
 			<scroll-view scroll-y class="table-body" @scrolltolower="loadMore">
-				<view class="table-row" v-for="(item, index) in filteredAssets" :key="index"
+				<view class="table-row" v-for="(item, index) in assetsList" :key="index"
 					@click="toggleSelection(item)" :class="{ 'selected': selectedAsset === item.资产编号 }">
 					<view class="cell col-1">
-						<view
-							:class="{ 'radio-checked': selectedAsset === item.资产编号, 'radio-unchecked': selectedAsset !== item.资产编号 }">
+						<!-- 将 class 改为 checkbox-icon 风格 -->
+						<view class="checkbox-icon"
+							:class="{ 'checkbox-checked': selectedAsset === item.资产编号, 'checkbox-unchecked': selectedAsset !== item.资产编号 }">
+							<!-- 选中时显示的对勾图标（用CSS画或者字体图标） -->
+							<text v-if="selectedAsset === item.资产编号" class="check-mark">✓</text>
 						</view>
 					</view>
 					<view class="cell col-2">{{ item.资产编号 }}</view>
@@ -34,8 +37,9 @@
 
 			<!-- 4. 底部按钮 (固定在最下方) -->
 			<view class="footer-section">
-				<button class="repair-button" :disabled="!selectedAsset" @click="submitRepair">
-					确定报修
+				<button class="repair-button" :class="{ 'btn-disabled': !selectedAsset }" :disabled="!selectedAsset"
+					@click="submitRepair">
+					{{ !selectedAsset ? '请选择报修资产' : '确定报修' }}
 				</button>
 			</view>
 
@@ -52,30 +56,31 @@
 		},
 		data() {
 			return {
+				allAssets: [], // 存放接口返回的【全部】数据
+				assetsList: [], // 存放【当前显示】的数据
+
 				username: '',
 				searchQuery: '',
-				assetsList: [],
 				selectedAsset: '',
 				currentPage: 1,
-				pageSize: 10,
+				pageSize: 20,
 				loading: false,
-				hasMoreData: true
+				hasMoreData: true,
+				moduleType: ''
 			};
 		},
 		// 通过搜索，过滤信息
 		computed: {
-			filteredAssets() {
-				return this.assetsList.filter(asset =>
-					(asset.资产编号 && asset.资产编号.includes(this.searchQuery)) ||
-					(asset.资产名称 && asset.资产名称.includes(this.searchQuery))
-				).slice(0, this.currentPage * this.pageSize);
-			},
 			selectedAssetInfo() {
-				return this.assetsList.find(asset => asset.资产编号 === this.selectedAsset);
+				// 注意：这里要在 allAssets 里找，防止搜不到未渲染的数据
+				return this.allAssets.find(asset => asset.资产编号 === this.selectedAsset);
 			}
 		},
 
-		onLoad() {
+		onLoad(options) {
+			if (options.moduleType) {
+				this.moduleType = options.moduleType;
+			}
 			// 当页面加载时尝试从本地存储获取用户名
 			const userInfo = uni.getStorageSync('userInfo');
 			if (userInfo && userInfo.username) {
@@ -104,41 +109,49 @@
 					return;
 				}
 
+				const requestData = {
+					connid: userInfo.connid,
+					token: userInfo.token,
+					search: this.searchQuery,
+					isEdit: true,
+					moduleType: this.moduleType,
+
+				};
+
+				// 2. 添加日志打印
+				console.log('GetAllCode 接口请求参数:', requestData);
 				uni.request({
 					url: 'http://13.94.38.44:8000/AssetsRepair/GetAllCode',
 					method: 'POST',
 					header: {
 						'content-type': 'application/json'
 					},
-					data: JSON.stringify({
-						connid: userInfo.connid,
-						token: userInfo.token,
-						search: this.searchQuery,
-						isEdit: true,
-						page: this.currentPage,
-						size: this.pageSize
-					}),
+					data: JSON.stringify(requestData),
 					success: (response) => {
 						const result = typeof response.data === 'string' ? JSON.parse(response.data) : response
 							.data;
-						console.log(result);
 						if (!result.IsError) {
-							if (result.list.length > 0) {
-								this.assetsList = reset ? result.list : [...this.assetsList, ...result.list];
-								this.currentPage++;
-							} else {
-								this.hasMoreData = false;
-							}
+							// 1. 把所有数据存入 allAssets
+							this.allAssets = result.list || [];
+
+							// 2. 初始化分页状态
+							this.currentPage = 1;
+							this.hasMoreData = true;
+							this.assetsList = [];
+
+							// 3. 执行第一次本地切片渲染
+							this.renderLocalData();
+
 						} else {
 							uni.showToast({
-								title: '获取资产信息失败',
+								title: '获取数据失败',
 								icon: 'none'
 							});
 						}
 					},
 					fail: () => {
 						uni.showToast({
-							title: '请求失败，请检查网络连接',
+							title: '网络失败',
 							icon: 'none'
 						});
 					},
@@ -147,14 +160,47 @@
 					}
 				});
 			},
-			handleSearchInput() {
-				this.fetchAssets(true);
+handleSearchInput() {
+				// 搜索时，重置页码，重新计算显示的列表
+				this.currentPage = 1;
+				this.hasMoreData = true;
+				this.renderLocalData();
 			},
+			loadMore() {
+							if (!this.hasMoreData) return;
+							
+							// 只是增加页码，然后重新切片显示
+							this.currentPage++;
+							this.renderLocalData();
+						},
 			toggleSelection(item) {
 				if (this.selectedAsset === item.资产编号) {
 					this.selectedAsset = ''; // 取消选择
 				} else {
 					this.selectedAsset = item.资产编号; // 选择新项
+				}
+			},renderLocalData() {
+				// 1. 这一步做搜索过滤 (如果需要前端搜索)
+				let filtered = this.allAssets;
+				if (this.searchQuery) {
+					filtered = this.allAssets.filter(asset => 
+						(asset.资产编号 && asset.资产编号.includes(this.searchQuery)) ||
+						(asset.资产名称 && asset.资产名称.includes(this.searchQuery))
+					);
+				}
+
+				// 2. 计算当前应该显示多少条
+				const total = filtered.length;
+				const endIndex = this.currentPage * this.pageSize;
+				
+				// 3. 截取数据赋值给 assetsList
+				this.assetsList = filtered.slice(0, endIndex);
+				
+				// 4. 判断是不是到底了
+				if (this.assetsList.length >= total) {
+					this.hasMoreData = false;
+				} else {
+					this.hasMoreData = true;
 				}
 			},
 
@@ -191,8 +237,7 @@
 							.data;
 						console.log(result)
 						if (!result.IsError) {
-							// 将资产信息作为参数传递给repair页面
-							// 修改 mobileRepair 页面的跳转代码
+							result.moduleType = this.moduleType;
 							uni.navigateTo({
 								url: `/pages/repair/repair?data=${encodeURIComponent(JSON.stringify(result))}`
 							});
@@ -213,9 +258,7 @@
 					}
 				});
 			},
-			loadMore() {
-				this.fetchAssets();
-			},
+
 			logout() {
 				uni.removeStorageSync('userInfo'); // 修改为移除整个userInfo缓存
 				uni.redirectTo({
@@ -227,7 +270,6 @@
 </script>
 
 <style scoped>
-	/* 定义统一的边框颜色变量（模拟），方便维护 */
 	/* 页面主容器 */
 	.container {
 		display: flex;
@@ -243,7 +285,6 @@
 		display: flex;
 		flex-direction: column;
 		width: 92%;
-		/* 稍微宽一点 */
 		max-width: 800rpx;
 		margin: 0 auto;
 		padding-top: 24rpx;
@@ -256,50 +297,44 @@
 		height: 80rpx;
 		padding: 0 30rpx;
 		margin-bottom: 24rpx;
-		/* 胶囊形状 */
 		background-color: #f7f8fa;
-		border: 1px solid transparent; /* 默认无边框 */
+		border: 1px solid transparent;
 		border-radius: 40rpx;
 		box-sizing: border-box;
 		flex-shrink: 0;
 		font-size: 28rpx;
-		text-align: center; /* 像 iOS 一样居中 */
+		text-align: center;
 		transition: all 0.3s;
 		color: #333;
 	}
-	
-	/* 聚焦时显示淡淡的边框 */
+
 	.search-input:focus {
 		background-color: #fff;
 		border-color: #007aff;
 	}
 
 	/* --- 2. 表格容器美化 --- */
-	/* 表头容器 */
 	.table-header-wrapper {
 		display: flex;
 		width: 100%;
-		background-color: #f5f7fa; /* 极浅的蓝灰色背景 */
+		background-color: #f5f7fa;
 		flex-shrink: 0;
-		border-top: 1rpx solid #ebeef5; /* 更柔和的线条 */
+		border-top: 1rpx solid #ebeef5;
 		border-left: 1rpx solid #ebeef5;
-		border-top-left-radius: 12rpx; /* 左上圆角 */
-		border-top-right-radius: 12rpx; /* 右上圆角 */
+		border-top-left-radius: 12rpx;
+		border-top-right-radius: 12rpx;
 		box-sizing: border-box;
-		overflow: hidden; /* 保证圆角不被子元素遮挡 */
+		overflow: hidden;
 	}
 
-	/* 表格滚动区 */
 	.table-body {
 		flex: 1;
 		height: 0;
 		width: 100%;
 		box-sizing: border-box;
-		/* 底部加一点阴影暗示可以滚动 */
 		background: #fff;
 	}
 
-	/* 表格行 */
 	.table-row {
 		display: flex;
 		width: 100%;
@@ -307,21 +342,25 @@
 		box-sizing: border-box;
 		transition: background-color 0.2s;
 	}
-	
-	/* 点击反馈 */
+
 	.table-row:active {
 		background-color: #f0f0f0;
 	}
 
+	/* 选中整行的背景色 */
+	.selected {
+		background-color: #ecf5ff !important;
+	}
+
 	/* --- 3. 单元格美化 --- */
 	.header-cell {
-		color: #606266; /* 次深灰 */
+		color: #606266;
 		font-size: 28rpx;
 		font-weight: 600;
 	}
-	
+
 	.cell {
-		color: #303133; /* 深灰 */
+		color: #303133;
 		font-size: 26rpx;
 	}
 
@@ -330,7 +369,7 @@
 		text-align: center;
 		border-right: 1rpx solid #ebeef5;
 		border-bottom: 1rpx solid #ebeef5;
-		padding: 24rpx 10rpx; /* 增加一点内边距 */
+		padding: 24rpx 10rpx;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -338,57 +377,51 @@
 		box-sizing: border-box;
 	}
 
-	/* 列宽比例 */
-	.col-1 { flex: 0.6; } /* 稍微宽一点放单选框 */
-	.col-2 { flex: 2.2; }
-	.col-3 { flex: 2.2; }
-
-	/* --- 4. 选中状态美化 --- */
-	.selected {
-		background-color: #ecf5ff !important; /* 非常浅的蓝色，Element UI 风格 */
+	.col-1 {
+		flex: 0.6;
 	}
 
-	/* --- 5. 单选框重绘 (CSS绘制，不再用文字) --- */
-	.radio-icon {
-		width: 36rpx;
-		height: 36rpx;
-		border-radius: 50%;
+	.col-2 {
+		flex: 2.2;
+	}
+
+	.col-3 {
+		flex: 2.2;
+	}
+
+	/* --- 4. 选择框 (Checkbox 风格) --- */
+	.checkbox-icon {
+		width: 44rpx;
+		height: 44rpx;
+		border-radius: 8rpx;
 		box-sizing: border-box;
 		transition: all 0.2s;
-		position: relative;
+		display: flex;
+		align-items: center;
+		justify-content: center;
 	}
 
-	/* 未选中：灰色边框，空心 */
-	.radio-unchecked {
-		border: 2rpx solid #dcdfe6;
+	/* 未选中 */
+	.checkbox-unchecked {
+		border: 3rpx solid #dcdfe6;
 		background-color: #fff;
 	}
 
-	/* 选中：蓝色背景，蓝色边框，中间有白点 */
-	.radio-checked {
-		border: 2rpx solid #007aff;
+	/* 选中 */
+	.checkbox-checked {
+		border: 3rpx solid #007aff;
 		background-color: #007aff;
 	}
-	
-	/* 选中的小白点 */
-	.radio-checked::after {
-		content: '';
-		position: absolute;
-		top: 50%;
-		left: 50%;
-		transform: translate(-50%, -50%);
-		width: 14rpx;
-		height: 14rpx;
-		background-color: #fff;
-		border-radius: 50%;
-	}
-	
-	/* 覆盖掉之前的伪元素样式 */
-	.radio-checked::before, .radio-unchecked::before {
-		content: none; 
+
+	/* 对勾符号 */
+	.check-mark {
+		color: white;
+		font-size: 32rpx;
+		font-weight: bold;
+		line-height: 1;
 	}
 
-	/* 加载提示 */
+	/* --- 5. 加载提示 --- */
 	.loading-indicator {
 		text-align: center;
 		padding: 30rpx;
@@ -400,38 +433,44 @@
 	.footer-section {
 		width: 100%;
 		flex-shrink: 0;
-		background-color: #fff; /* 纯白背景 */
+		background-color: #fff;
 		padding-top: 20rpx;
 		padding-bottom: calc(60rpx + constant(safe-area-inset-bottom));
 		padding-bottom: calc(60rpx + env(safe-area-inset-bottom));
-		
-		/* 顶部加一点点阴影，把按钮区和表格区分开 */
-		box-shadow: 0 -4rpx 10rpx rgba(0,0,0,0.03); 
+		box-shadow: 0 -4rpx 10rpx rgba(0, 0, 0, 0.03);
 		z-index: 10;
 	}
 
 	.repair-button {
 		width: 100%;
-		height: 96rpx; /* 更高的按钮 */
+		height: 96rpx;
 		line-height: 96rpx;
-		background: linear-gradient(135deg, #007aff, #0062cc); /* 增加微弱渐变 */
+		background: linear-gradient(135deg, #007aff, #0062cc);
 		color: white;
 		border: none;
-		border-radius: 48rpx; /* 大圆角 */
+		border-radius: 48rpx;
 		font-size: 32rpx;
 		font-weight: 600;
 		letter-spacing: 2rpx;
-		box-shadow: 0 8rpx 20rpx rgba(0, 122, 255, 0.3); /* 漂亮的蓝色投影 */
-		transition: transform 0.1s;
+		box-shadow: 0 8rpx 20rpx rgba(0, 122, 255, 0.3);
+		transition: all 0.2s;
 	}
 
 	.repair-button:active {
-		transform: scale(0.98); /* 点击时的微缩效果 */
+		transform: scale(0.98);
+	}
+
+	/* 禁用状态 */
+	.repair-button.btn-disabled {
+		background: #e4e7ed;
+		color: #909399;
+		box-shadow: none;
+		pointer-events: none;
 	}
 
 	.repair-button:disabled {
 		background: #e4e7ed;
-		color: #a8abb2;
+		color: #909399;
 		box-shadow: none;
 	}
 </style>

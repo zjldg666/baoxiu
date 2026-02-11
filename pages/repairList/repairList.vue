@@ -1,35 +1,51 @@
 <template>
   <view class="container">
-	  <navbar :username="username" @logout="logout"/>
-	  <view class="content">
-		  <!-- 表格内容 -->
-		  <scroll-view scroll-y class="table-container">
-		    <!-- 表格头 -->
-		    <view class="table-header">
-		      <view class="header-cell">进度</view>
-		      <view class="header-cell">报修单号</view>
-		      <view class="header-cell">资产名称</view>
-		      <view class="header-cell">故障描述</view>
-		    </view>
-		    <view 
-		      class="table-row" 
-		      v-for="(item, index) in assetsList" 
-		      :key="index"
-		      @click="navigateToDetail(item)"
-		    >
-		      <view class="cell">{{ item.进度 || '-' }}</view>
-		      <view class="cell">{{ item.报修单号 || '-' }}</view>
-		      <view class="cell">{{ item.资产名称 || '-' }}</view>
-		      <view class="cell">{{ item.故障描述 || '-' }}</view>
-		    </view>
-		    <view v-if="!assetsList.length && !loading" class="no-data">暂无数据</view>
-		    <view v-if="loading" class="loading-indicator">加载中...</view>
-		    <view v-if="error" class="error-message">
-		      数据加载失败，请尝试刷新。<button class="refresh-button" @click="fetchAssets(true)">刷新</button>
-		    </view>
-		  </scroll-view>
-	  </view>
- 
+    <!-- 1. 顶部导航 (固定) -->
+    <navbar :username="username" @logout="logout" />
+
+    <!-- 2. 内容区域 (Flex 布局) -->
+    <view class="content">
+      
+      <!-- A. 表头 (放在 scroll-view 外面，所以固定不动) -->
+      <view class="table-header-wrapper">
+        <view class="header-cell col-status">进度</view>
+        <view class="header-cell col-doc">报修单号</view>
+        <view class="header-cell col-name">资产名称</view>
+        <view class="header-cell col-desc">故障描述</view>
+      </view>
+
+      <!-- B. 列表内容 (scroll-view 占据剩余空间，内部滚动) -->
+      <scroll-view scroll-y class="table-body">
+        <view 
+          class="table-row" 
+          v-for="(item, index) in assetsList" 
+          :key="index"
+          @click="navigateToDetail(item)"
+        >
+          <view class="cell col-status">{{ item.进度 || '-' }}</view>
+          <view class="cell col-doc">{{ item.报修单号 || '-' }}</view>
+          <view class="cell col-name">{{ item.资产名称 || '-' }}</view>
+          <view class="cell col-desc">{{ item.故障描述 || '-' }}</view>
+        </view>
+
+        <!-- 状态提示 -->
+        <view v-if="loading" class="state-container">
+          <text class="state-text">加载中...</text>
+        </view>
+
+        <view v-if="!assetsList.length && !loading && !error" class="state-container">
+          <text class="state-text">暂无数据</text>
+        </view>
+
+        <view v-if="error" class="state-container">
+          <text class="error-text">加载失败</text>
+          <button class="refresh-btn" @click="fetchAssets(true)">刷新</button>
+        </view>
+        
+        <!-- 底部垫高 (防止最后一条数据贴底) -->
+        <view style="height: 30rpx;"></view>
+      </scroll-view>
+    </view>
   </view>
 </template>
 
@@ -49,10 +65,14 @@ export default {
       currentPage: 1,
       hasMoreData: true,
       loading: false,
-      error: false
+      error: false,
+	  moduleType: ''
     };
   },
-  onLoad() {
+  onLoad(options) {
+	  if (options && options.moduleType) {
+	      this.moduleType = options.moduleType;
+	    }
 	  // 当页面加载时尝试从本地存储获取用户名
 	  const userInfo = uni.getStorageSync('userInfo');
 	  if (userInfo && userInfo.username) {
@@ -90,7 +110,8 @@ export default {
         },
         data: JSON.stringify({
           connid: userInfo.connid,
-          token: userInfo.token
+          token: userInfo.token,
+		  moduleType: this.moduleType
         }),
         success: (response) => {
           let result;
@@ -160,91 +181,125 @@ export default {
 </script>
 
 <style scoped>
-.container {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  background-color: white;
-}
+  /* --- 1. 全局容器 (关键：定高 + 禁止溢出) --- */
+  .container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh; /* 占满整个屏幕高度 */
+    background-color: #f5f7fa;
+    overflow: hidden; /* 防止整个页面出现滚动条 */
+  }
 
-.content{
-	width: 90%;
-	max-width: 800rpx; 
-	flex: 1;
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	padding: 40rpx;
-}
-.table-container {
-  height: 1200rpx;
-  width: 100%;
-}
+  /* --- 2. 内容区域 (关键：Flex 纵向布局) --- */
+  .content {
+    flex: 1; /* 占据 Navbar 以下的所有空间 */
+    display: flex;
+    flex-direction: column; /* 让表头和列表上下排列 */
+    width: 100%;
+    margin: 0 auto;
+    background-color: #fff;
+    border-top: 1rpx solid #e4e7ed;
+    overflow: hidden; /* 关键：限制内容不溢出 content */
+  }
 
-.table-header {
-  display: flex;
-  background-color: #f5f5f5;
-  padding: 10rpx;
-  font-weight: bold;
-  width: 100%;
-}
+  /* --- 3. 表头样式 (固定) --- */
+  .table-header-wrapper {
+    /* 不设置 position: fixed，因为它在 flex 容器里自然就是顶部的 */
+    flex-shrink: 0; /* 关键：禁止被压缩 */
+    display: flex;
+    width: 100%;
+    background-color: #f5f7fa;
+    border-bottom: 1rpx solid #e4e7ed;
+    box-sizing: border-box;
+  }
 
-.header-cell {
-  flex: 1;
-  text-align: center;
-  border-right: 1rpx solid #ddd;
-}
+  .header-cell {
+    padding: 24rpx 10rpx;
+    font-size: 28rpx;
+    font-weight: 600;
+    color: #606266;
+    text-align: center;
+    border-right: 1rpx solid #ebeef5;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .header-cell:last-child {
+    border-right: none;
+  }
 
-.header-cell:last-child {
-  border-right: none;
-}
+  /* --- 4. 表格主体 (关键：滚动区域) --- */
+  .table-body {
+    flex: 1;   /* 关键：自动占据剩余高度 */
+    height: 0; /* 关键：配合 flex:1 使用，强制启用内部滚动 */
+    width: 100%;
+  }
 
-.table-row {
-  display: flex;
-  padding: 10rpx;
-  border-bottom: 1rpx solid #ddd;
-  width: 100%;
-}
+  .table-row {
+    display: flex;
+    width: 100%;
+    border-bottom: 1rpx solid #ebeef5;
+  }
 
-.cell {
-  flex: 1;
-  text-align: center;
-  white-space: normal; /* 允许文字换行 */
-  word-break: break-all; /* 强制长单词或 URL 地址换行到下一行 */
-  border-right: 1rpx solid #ddd;
-  padding: 10rpx; /* 添加内边距以提高可读性 */
-}
+  /* 斑马纹 */
+  .table-row:nth-child(even) {
+    background-color: #fafafa;
+  }
 
-.cell:last-child {
-  border-right: none;
-}
+  .cell {
+    padding: 20rpx 10rpx;
+    font-size: 26rpx;
+    color: #333;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    word-break: break-all;
+    border-right: 1rpx solid #ebeef5;
+    box-sizing: border-box;
+  }
+  
+  .cell:last-child {
+    border-right: none;
+  }
 
-.no-data {
-  text-align: center;
-  padding: 20rpx;
-  color: #666;
-}
+  /* --- 列宽比例设置 (表头和内容必须一致) --- */
+  .col-status { flex: 1.0; } /* 进度 */
+  .col-doc    { flex: 2.1; } /* 单号 */
+  .col-name   { flex: 1.3; } /* 名称 */
+  .col-desc   { flex: 1.9; } /* 描述 */
 
-.loading-indicator {
-  text-align: center;
-  padding: 20rpx;
-}
+  /* --- 状态提示 --- */
+  .state-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60rpx 0;
+  }
 
-.error-message {
-  text-align: center;
-  padding: 20rpx;
-  color: red;
-}
+  .state-text {
+    font-size: 28rpx;
+    color: #909399;
+  }
+  
+  .error-text {
+    font-size: 28rpx;
+    color: #f56c6c;
+    margin-bottom: 20rpx;
+  }
 
-.refresh-button {
-  margin-left: 10rpx;
-  padding: 10rpx 20rpx;
-  background-color: #007aff;
-  color: white;
-  border: none;
-  border-radius: 10rpx;
-  font-size: 28rpx;
-}
+  .refresh-btn {
+    padding: 0 40rpx;
+    height: 60rpx;
+    line-height: 60rpx;
+    background-color: #409eff;
+    color: white;
+    font-size: 26rpx;
+    border-radius: 30rpx;
+  }
 </style>
 
 

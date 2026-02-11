@@ -37,7 +37,14 @@
 				<!-- B. 填写区域卡片 -->
 				<view class="card">
 					<view class="card-title">报修信息</view>
-
+					<view class="form-row">
+						<text class="form-label required">故障日期</text>
+						<picker mode="date" @change="onFaultDateChange" class="picker-flex">
+							<view :class="FaultDate ? 'picker-text' : 'picker-placeholder'">
+								{{ FaultDate || '请选择日期 >' }}
+							</view>
+						</picker>
+					</view>
 					<!-- 日期选择 -->
 					<view class="form-row">
 						<text class="form-label required">希望完工日期</text>
@@ -120,9 +127,13 @@
 				AssetsType: '',
 				FinishDate: '',
 				Discription: '',
+				// 故障日期变量
+				FaultDate: '',
 				images: [],
 				showPopup: false, // 控制弹窗显示
-				currentAction: '' // 记录当前操作：'立即' 或 '稍后'
+				currentAction: '', // 记录当前操作：'立即' 或 '稍后'
+				// moduleType，默认为1
+				moduleType: '1'
 			};
 		},
 		//页面刷新时，将数据赋值，以便此页面使用
@@ -137,12 +148,14 @@
 				this.AssetsName = assetInfo.AssetsName;
 				this.UserDept = assetInfo.UserDept || '';
 				this.AssetsType = assetInfo.AssetsType;
-
+				// 接收上一页传来的 moduleType
+				this.moduleType = assetInfo.moduleType;
 				// 检查是否有草稿数据
 				const draftData = uni.getStorageSync('repairDraft_' + this.AssetsCode);
 				console.log(draftData);
 				if (draftData) {
 					this.FinishDate = draftData.FinishDate;
+					this.FaultDate = draftData.FaultDate || '';
 					this.Discription = draftData.Discription;
 					this.images = draftData.images;
 				}
@@ -159,6 +172,9 @@
 				uni.redirectTo({
 					url: '/pages/login/login'
 				});
+			},
+			onFaultDateChange(e) {
+				this.FaultDate = e.detail.value;
 			},
 			//选择完工日期
 			onDateChange(e) {
@@ -187,7 +203,7 @@
 
 			showConfirmDialog(action) {
 				// 1. 验证必填项
-				if (!this.FinishDate || !this.Discription) {
+				if (!this.FinishDate || !this.Discription || !this.FaultDate) {
 					uni.showToast({
 						title: '请确保所有必填项已填写',
 						icon: 'none'
@@ -238,8 +254,10 @@
 						docnum: this.docnum,
 						Discription: this.Discription,
 						FinishDate: this.FinishDate,
+						FaultDate: this.FaultDate,
 						type: type,
-						FileList: base64Images
+						FileList: base64Images,
+						moduleType: this.moduleType
 					};
 
 					console.log('请求数据:', requestData);
@@ -289,6 +307,7 @@
 						UserDept: this.UserDept,
 						AssetsType: this.AssetsType,
 						FinishDate: this.FinishDate,
+						FaultDate: this.FaultDate,
 						Discription: this.Discription,
 						images: this.images
 					};
@@ -473,7 +492,7 @@
 		/* 浅灰色标签 */
 	}
 
-	.value {
+.value {
 		font-size: 26rpx;
 		color: #333;
 		/* 深色内容 */
@@ -481,9 +500,10 @@
 		text-align: right;
 		flex: 1;
 		margin-left: 20rpx;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
+		
+		white-space: normal; 
+ 
+		word-break: break-all; 
 	}
 
 	.highlight {

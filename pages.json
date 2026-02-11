@@ -38,13 +38,6 @@
 			}
 		},
 		{
-			"path" : "pages/copy/copy",
-			"style" : 
-			{
-				"navigationBarTitleText" : "copy"
-			}
-		},
-		{
 			"path" : "pages/mobileRepair/mobileRepair",
 			"style" : 
 			{

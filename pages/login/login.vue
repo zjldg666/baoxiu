@@ -14,6 +14,7 @@
       
       <button type="primary" @click="login" class="button">登录</button>
     </view>
+	<view class="version-info">版本:1.3.3</view>
   </view>
 </template>
 
@@ -203,5 +204,13 @@ export default {
 }
 .button:active {
   background-color: #005bb5;
+}
+.version-info {
+  position: fixed;   /* 固定定位 */
+  bottom: 30rpx;     /* 距离底部 */
+  right: 30rpx;      /* 距离右侧 */
+  font-size: 24rpx;  /* 小字体 */
+  color: #c0c4cc;    /* 浅灰色 */
+  z-index: 99;
 }
 </style>
