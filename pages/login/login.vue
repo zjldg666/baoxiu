@@ -41,9 +41,9 @@ export default {
     const fetchCompanyList = () => {
       uni.request({
         url: 'http://13.94.38.44:8000/AssetsRepair/Index',
-        method: 'POST', // 改回POST请求（符合服务器接口要求）
+        method: 'POST', 
         header: {
-          'Content-Type': 'application/json' // 明确JSON格式，触发框架自动计算Content-Length
+          'Content-Type': 'application/json' 
         },
         data: {}, // 关键：添加空请求体（让框架生成Content-Length: 2，避免411错误）
         success: (res) => {
