@@ -33,8 +33,10 @@ export default {
   opacity: 1;
   background: white;
   color: black;
-  border-bottom: 1px solid #ccc; 
+  border-bottom: 1px solid #ccc;
+  position: relative; 
 }
+
 .logoBox {
   position: absolute;
   left: 32rpx;

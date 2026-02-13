@@ -1,68 +1,61 @@
 {
 	"pages": [ //pages数组中第一项表示应用启动页，参考：https://uniapp.dcloud.io/collocation/pages
-	
+
 		{
-			"path" : "pages/login/login",
-			"style" : 
-			{
-				"navigationBarTitleText" : "登录"
+			"path": "pages/login/login",
+			"style": {
+				"navigationBarTitleText": "登录"
 			}
 		},
 		{
-		  "path": "uni_modules/uni-upgrade-center-app/pages/upgrade-popup",
-		  "style": {
-		    "disableScroll": true,
-		    "app-plus": {
-		      "backgroundColorTop": "transparent",
-		      "background": "transparent",
-		      "titleNView": false,
-		      "scrollIndicator": false,
-		      "popGesture": "none",
-		      "animationType": "fade-in",
-		      "animationDuration": 200
-		    }
-		  }
-		},
-		{
-			"path" : "pages/home/home",
-			"style" : 
-			{
-				"navigationBarTitleText" : "主菜单"
+			"path": "uni_modules/uni-upgrade-center-app/pages/upgrade-popup",
+			"style": {
+				"disableScroll": true,
+				"app-plus": {
+					"backgroundColorTop": "transparent",
+					"background": "transparent",
+					"titleNView": false,
+					"scrollIndicator": false,
+					"popGesture": "none",
+					"animationType": "fade-in",
+					"animationDuration": 200
+				}
 			}
 		},
 		{
-			"path" : "pages/repair/repair",
-			"style" : 
-			{
-				"navigationBarTitleText" : "报修"
+			"path": "pages/home/home",
+			"style": {
+				"navigationStyle": "custom"
 			}
 		},
 		{
-			"path" : "pages/mobileRepair/mobileRepair",
-			"style" : 
-			{
-				"navigationBarTitleText" : "手机报修"
+			"path": "pages/repair/repair",
+			"style": {
+				"navigationBarTitleText": "报修"
 			}
 		},
 		{
-			"path" : "pages/repairList/repairList",
-			"style" : 
-			{
-				"navigationBarTitleText" : "报修清单"
+			"path": "pages/mobileRepair/mobileRepair",
+			"style": {
+				"navigationBarTitleText": "手机报修"
 			}
 		},
 		{
-			"path" : "pages/baoxiuMIngxi/baoxiuMIngxi",
-			"style" : 
-			{
-				"navigationBarTitleText" : "报修明细"
+			"path": "pages/repairList/repairList",
+			"style": {
+				"navigationBarTitleText": "报修清单"
 			}
 		},
 		{
-			"path" : "pages/weixiuMingxi/weixiuMingxi",
-			"style" : 
-			{
-				"navigationBarTitleText" : "维修明细"
+			"path": "pages/baoxiuMIngxi/baoxiuMIngxi",
+			"style": {
+				"navigationBarTitleText": "报修明细"
+			}
+		},
+		{
+			"path": "pages/weixiuMingxi/weixiuMingxi",
+			"style": {
+				"navigationBarTitleText": "维修明细"
 			}
 		}
 	],

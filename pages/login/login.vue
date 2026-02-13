@@ -48,8 +48,6 @@ export default {
         },
         data: {}, // 关键：添加空请求体（让框架生成Content-Length: 2，避免411错误）
         success: (res) => {
-          console.log('获取公司列表响应:', res)
-          
           // 第一步：先判断HTTP状态码是否成功（200-299）
           if (res.statusCode < 200 || res.statusCode >= 300) {
             console.error('服务器返回错误状态码:', res.statusCode)
@@ -76,6 +74,8 @@ export default {
 
           // 成功：赋值公司列表
           companyList.value = data.list
+		  // 把公司列表存入缓存，供 Home 页面使用
+		    uni.setStorageSync('company_list_cache', data.list);
           console.log('公司列表获取成功:', companyList.value)
         },
         fail: (err) => {
@@ -124,6 +124,11 @@ export default {
               username: result.EMP_NAME,
               connid: result.connid
             })
+			// 2.存入账号和密码，供 Home 页面切换公司使用
+			uni.setStorageSync('login_credentials', {
+			    account: username.value,  // 账号
+			    password: password.value  // 密码
+			  });
             uni.redirectTo({ url: '/pages/home/home' })
           } else {
             password.value = ''
